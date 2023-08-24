@@ -95,3 +95,4 @@ let heroText = document.getElementsByClassName('hero-text')[0];
 // Element.before(elementToAdd)
 // Add the elementToAdd BEFORE (as a sibling) the Element
 heroText.before(newHeader);
+
