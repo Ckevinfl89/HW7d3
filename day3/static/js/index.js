@@ -12,6 +12,16 @@ function pageLoader(){
         btn.addEventListener('click', changeBackgroundColor);
     };
 
+    // Get the nav links and add the changeView event listener
+    const navLinks = document.getElementsByClassName('nav-link');
+    for (let link of navLinks){
+        link.addEventListener('click', changeView);
+    }
+
+    // Add the brew finder when the form submits
+    const findBrewsForm = document.querySelector('#find-brews-form');
+    findBrewsForm.addEventListener('submit', (e) => findBreweries(e, 1));
+
 }
 
 // Create a function that will change the background color
@@ -22,5 +32,114 @@ function changeBackgroundColor(e){
         document.body.style.backgroundColor = '#C96E12'
     } else {
         document.body.style.backgroundColor = '#FFF897'
+    }
+}
+
+
+// Create a function to make this a Single Page App (SPA) by swapping visible divs
+function changeView(event){
+    // Turn off the element(s) that are visible
+    const toTurnOff = document.getElementsByClassName('is-visible');
+    for (let element of toTurnOff){
+        console.log('Turning off', element);
+        element.classList.replace('is-visible', 'is-invisible');
+    }
+
+    // Turn on the element based on the link that was clicked
+    let idToTurnOn = event.target.name;
+    const toTurnOn = document.getElementById(idToTurnOn);
+    toTurnOn.classList.replace('is-invisible', 'is-visible');
+}
+
+
+function findBreweries(event, pageNumber){
+    event.preventDefault();
+    // console.dir(event.target.city);
+    const cityName = document.getElementsByName('city')[0].value;
+    console.log(`Looking for breweries in ${cityName}...`);
+    const url = `https://api.openbrewerydb.org/v1/breweries?by_city=${cityName}&per_page=10&page=${pageNumber}`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => displayBreweries(data, pageNumber))
+        .catch(err => console.error(err))
+}
+
+
+// Callback Function for findBreweries that will insert breweries into table
+function displayBreweries(data, pageNumber){
+    data.sort( (a, b) => {
+        if (a.city > b.city){return 1}
+        else if (a.city < b.city){ return -1}
+        else { return 0}
+    })
+    let table = document.getElementById('brewery-table');
+
+    // TODO: Clear out the table of any current data
+    clearTable(table);
+
+    // Create the brewery table headers
+    const thead = document.createElement('thead');
+    table.append(thead);
+    let tr = document.createElement('tr');
+    thead.append(tr);
+    const tableHeadings = ['Name', 'Type', 'Street Address', 'Address 2', 'Address 3', 'City', 'State'];
+    for (let heading of tableHeadings){
+        let th = document.createElement('th');
+        th.scope = 'col';
+        th.innerText = heading;
+        tr.append(th);
+    }
+
+    // write a row for each brewery in data
+    for (let brewery of data){
+        let tr = document.createElement('tr');
+        table.append(tr);
+
+        const td = document.createElement('td');
+        td.innerHTML = `<a href=${brewery.website_url} target="_blank">${brewery.name}</a>`
+        tr.append(td);
+
+        newDataCell(tr, brewery.brewery_type);
+        newDataCell(tr, brewery.street);
+        newDataCell(tr, brewery.address_2);
+        newDataCell(tr, brewery.address_3);
+        newDataCell(tr, brewery.city);
+        newDataCell(tr, brewery.state);
+    }
+
+    // Add a next button if there is data
+    if (data.length >= 0 && data.length == 10){
+        let nextButton = document.createElement('button');
+        nextButton.classList.add('prev-next-btn', 'btn', 'btn-primary');
+        nextButton.innerText = 'Next';
+        nextButton.addEventListener('click', e => findBreweries(e, pageNumber + 1));
+        table.after(nextButton);
+    }
+
+    // Add a previous button for all pages past page 1
+    if (pageNumber > 1){
+        let prevButton = document.createElement('button');
+        prevButton.classList.add('prev-next-btn', 'btn', 'btn-danger');
+        prevButton.innerText = 'Prev';
+        prevButton.addEventListener('click', e => findBreweries(e, pageNumber - 1))
+        table.after(prevButton);
+    }
+}
+
+
+// Helper function to create a new data cell for table
+function newDataCell(tr, value){
+    let td = document.createElement('td');
+    td.innerText = value ?? '-';
+    tr.append(td);
+}
+
+// Helper function to clear the brewery table
+function clearTable(table){
+    table.innerHTML = '';
+    const buttonsToClear = document.querySelectorAll('.prev-next-btn');
+    for (let btn of buttonsToClear){
+        btn.remove()
     }
 }
