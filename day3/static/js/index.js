@@ -22,6 +22,22 @@ function pageLoader(){
     const findBrewsForm = document.querySelector('#find-brews-form');
     findBrewsForm.addEventListener('submit', (e) => findBreweries(e, 1));
 
+    // Add drag and drop for the beer and coaster
+    const droppable = document.getElementById('droppable');
+    droppable.addEventListener('dragover', allowDrop);
+    droppable.addEventListener('drop', drop);
+    const draggable = document.getElementById('draggable');
+    draggable.addEventListener('dragstart', drag);
+
+    // Add click listeners to the Bubbles to show how events propogate
+    const bubbles = document.getElementsByClassName('bubble');
+    bubbles[0].addEventListener('click', event => console.log("You clicked outer ... propogated from:", event.target.id));
+    bubbles[1].addEventListener('click', event => {
+        console.log("You clicked middle ... propogated from:", event.target.id);
+        // event.stopPropagation(); // Will stop the event from also calling the outer event
+    });
+    bubbles[2].addEventListener('click', event => console.log("You clicked inner ... propogated from:", event.target.id));
+
 }
 
 // Create a function that will change the background color
@@ -43,12 +59,22 @@ function changeView(event){
     for (let element of toTurnOff){
         console.log('Turning off', element);
         element.classList.replace('is-visible', 'is-invisible');
+        let navLink = document.getElementsByName(element.id)[0];
+        navLink.classList.remove('active');
     }
 
     // Turn on the element based on the link that was clicked
     let idToTurnOn = event.target.name;
     const toTurnOn = document.getElementById(idToTurnOn);
     toTurnOn.classList.replace('is-invisible', 'is-visible');
+    event.target.classList.add('active');
+
+    // Toggle beer movement
+    if (idToTurnOn === 'grab'){
+        startBeerMove();
+    } else {
+        endBeerMove();
+    }
 }
 
 
@@ -78,38 +104,44 @@ function displayBreweries(data, pageNumber){
     // TODO: Clear out the table of any current data
     clearTable(table);
 
-    // Create the brewery table headers
-    const thead = document.createElement('thead');
-    table.append(thead);
-    let tr = document.createElement('tr');
-    thead.append(tr);
-    const tableHeadings = ['Name', 'Type', 'Street Address', 'Address 2', 'Address 3', 'City', 'State'];
-    for (let heading of tableHeadings){
-        let th = document.createElement('th');
-        th.scope = 'col';
-        th.innerText = heading;
-        tr.append(th);
-    }
-
-    // write a row for each brewery in data
-    for (let brewery of data){
+    if (data.length){
+        // Create the brewery table headers
+        const thead = document.createElement('thead');
+        table.append(thead);
         let tr = document.createElement('tr');
-        table.append(tr);
-
-        const td = document.createElement('td');
-        td.innerHTML = `<a href=${brewery.website_url} target="_blank">${brewery.name}</a>`
-        tr.append(td);
-
-        newDataCell(tr, brewery.brewery_type);
-        newDataCell(tr, brewery.street);
-        newDataCell(tr, brewery.address_2);
-        newDataCell(tr, brewery.address_3);
-        newDataCell(tr, brewery.city);
-        newDataCell(tr, brewery.state);
+        thead.append(tr);
+        const tableHeadings = ['Name', 'Type', 'Street Address', 'Address 2', 'Address 3', 'City', 'State'];
+        for (let heading of tableHeadings){
+            let th = document.createElement('th');
+            th.scope = 'col';
+            th.innerText = heading;
+            tr.append(th);
+        }
+    
+        // write a row for each brewery in data
+        for (let brewery of data){
+            let tr = document.createElement('tr');
+            table.append(tr);
+    
+            const td = document.createElement('td');
+            td.innerHTML = `<a href=${brewery.website_url} target="_blank">${brewery.name}</a>`
+            tr.append(td);
+    
+            newDataCell(tr, brewery.brewery_type);
+            newDataCell(tr, brewery.street);
+            newDataCell(tr, brewery.address_2);
+            newDataCell(tr, brewery.address_3);
+            newDataCell(tr, brewery.city);
+            newDataCell(tr, brewery.state);
+        }
+    } else {
+        let noMore = document.createElement('h4');
+        noMore.innerText = pageNumber > 1 ? 'There are no breweries' : 'No Breweries in this city';
+        table.append(noMore);
     }
 
     // Add a next button if there is data
-    if (data.length >= 0 && data.length == 10){
+    if (data.length == 10){
         let nextButton = document.createElement('button');
         nextButton.classList.add('prev-next-btn', 'btn', 'btn-primary');
         nextButton.innerText = 'Next';
@@ -142,4 +174,68 @@ function clearTable(table){
     for (let btn of buttonsToClear){
         btn.remove()
     }
+}
+
+
+// All drop events by stopping the default behavior for dragging
+function allowDrop(e){
+    // console.log('Allowing drop on:', e.target);
+    e.preventDefault()
+}
+
+// Set up drag to transfer the element's ID
+function drag(e){
+    console.log('Dragging beer...');
+    e.dataTransfer.setData('text', e.target.id);
+}
+
+function drop(e){
+    console.log('Dropping beer...');
+    const beerId = e.dataTransfer.getData('text');
+    console.log(beerId);
+    const draggable = document.getElementById(beerId);
+    e.target.append(draggable);
+}
+
+
+// Move the glass with key strokes by changing it's absolute position
+function handleBeerMove(event){
+    console.log(event.key);
+    const arrowKeys = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'];
+    // If the user presses one of the arrow keys
+    if (arrowKeys.includes(event.key)){
+        // Move the beer glass 5px in that direction
+        const glass = document.querySelector('.beerglass');
+        switch(event.key){
+            case 'ArrowUp':
+                glass.style.top = parseInt(glass.style.top.substring(0, glass.style.top.length-2)) - 5 + 'px';
+                break;
+            case 'ArrowDown':
+                glass.style.top = parseInt(glass.style.top.substring(0, glass.style.top.length-2)) + 5 + 'px';
+                break;
+            case 'ArrowLeft':
+                glass.style.left = parseInt(glass.style.left.substring(0, glass.style.left.length-2)) - 5 + 'px';
+                break;
+            case 'ArrowRight':
+                glass.style.left = parseInt(glass.style.left.substring(0, glass.style.left.length-2)) + 5 + 'px';
+                break;
+        }
+        // If the beer glass is in the coaster, show a message
+        if (glass.style.top === '200px' && glass.style.left === '450px'){
+            setTimeout(() => {
+                alert('Enjoy a nice cold beer!');
+            });
+        }
+    }
+}
+
+// Functions to turn on and off the beer mover
+function startBeerMove(){
+    console.log('listening for beer movement');
+    document.addEventListener('keydown', handleBeerMove);
+}
+
+function endBeerMove(){
+    console.log('No longer listening for beer movement');
+    document.removeEventListener('keydown', handleBeerMove);
 }
